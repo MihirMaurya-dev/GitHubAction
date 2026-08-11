@@ -1,15 +1,15 @@
-variable "rg_name" {
-  description = "Name of the resource group"
+variable "vnet_name" {
+  description = "Name of the virtual network"
   type        = string
 }
 
 variable "location" {
-  description = "Location of the resource group"
+  description = "Location of the virtual network"
   type        = string
 }
 
-variable "vnet_name" {
-  description = "Name of the virtual network"
+variable "rg_name" {
+  description = "Name of the resource group"
   type        = string
 }
 
