@@ -17,13 +17,3 @@ variable "address_space" {
   description = "Address space of the virtual network"
   type        = list(string)
 }
-
-variable "subnet_name" {
-  description = "Name of the subnet"
-  type        = string
-}
-
-variable "address_prefixes" {
-  description = "Address prefixes for the subnet"
-  type        = list(string)
-}
