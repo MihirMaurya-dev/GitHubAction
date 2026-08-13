@@ -1,0 +1,9 @@
+{
+  "name": "github-actions",
+  "issuer": "https://token.actions.githubusercontent.com/",
+  "subject": "repo:MihirMaurya-dev/GitHubAction:ref:refs/heads/main",
+  "description": "GitHub Actions OIDC",
+  "audiences": [
+    "api://AzureADTokenExchange"
+  ]
+}
