@@ -10,6 +10,10 @@ jobs:
   terraform-ci:
     name: 'Terraform CI & Security Scans'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
 
     defaults:
       run:
