@@ -1,0 +1,15 @@
+title = "Optimized Gitleaks Configuration for Terraform"
+
+[[rules]]
+id = "terraform-hardcoded-credentials"
+description = "Detects hardcoded passwords, secrets, and tokens in Terraform files"
+# This regex looks for variable assignments often associated with secrets
+regex = '''(?i)(password|passwd|pwd|secret|token|api_key|access_key|client_secret|admin_password)\s*=\s*".+"'''
+secretGroup = 0
+tags = ["terraform", "credentials"]
+
+
+# We can tell Gitleaks to ignore known dummy values like "Password123!" if we want to allow tests
+# Uncomment the below block if you want to ignore specific dummy values
+# [rules.allowlist]
+# regexes = ['''(?i)"password123!?"''', '''(?i)"dummy"''']
