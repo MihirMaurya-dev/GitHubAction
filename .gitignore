@@ -50,3 +50,4 @@ Thumbs.db
 **/.infracost/
 *.plan.json
 plan.json
+.editorconfig
