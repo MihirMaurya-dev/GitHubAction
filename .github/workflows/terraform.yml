@@ -79,7 +79,41 @@ jobs:
         run: terraform plan -out=tfplan
 
       - name: Infracost Breakdown
-        run: infracost breakdown --path .
+        if: github.event_name == 'pull_request'
+        run: infracost breakdown --path . --format=json --out-file=/tmp/infracost.json
+      
+      - name: Post Infracost Comment
+        if: github.event_name == 'pull_request'
+        uses: infracost/actions/comment@v3
+        with:
+          path: /tmp/infracost.json
+          behavior: update
+
+      - name: Post Terraform Plan Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            execSync('terraform show -no-color tfplan > plan.txt', { cwd: 'env/dev' });
+            const plan = fs.readFileSync('env/dev/plan.txt', 'utf8');
+            
+            const output = `#### 🏗️ Terraform Plan Details
+            <details><summary>Click to expand the plan output</summary>
+            
+            \`\`\`hcl
+            ${plan}
+            \`\`\`
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
 
       - name: Terraform Apply
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
