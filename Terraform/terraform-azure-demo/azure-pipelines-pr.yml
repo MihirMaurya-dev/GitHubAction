@@ -1,0 +1,35 @@
+trigger: none # This pipeline doesn't run on merges to main, only on PRs
+
+pr:
+  branches:
+    include:
+      - main # Triggers when a PR is opened against the 'main' branch
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # The directory where our Terraform code lives
+  tf_working_dir: '$(System.DefaultWorkingDirectory)/Terraform/terraform-azure-demo'
+
+steps:
+- task: TerraformInstaller@1
+  displayName: 'Install Terraform'
+  inputs:
+    terraformVersion: 'latest'
+
+- script: terraform init
+  displayName: 'Terraform Init'
+  workingDirectory: $(tf_working_dir)
+
+- script: terraform fmt -check
+  displayName: 'Terraform Format Check'
+  workingDirectory: $(tf_working_dir)
+
+- script: terraform validate
+  displayName: 'Terraform Validate'
+  workingDirectory: $(tf_working_dir)
+
+- script: terraform plan
+  displayName: 'Terraform Plan'
+  workingDirectory: $(tf_working_dir)
