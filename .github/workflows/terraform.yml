@@ -75,5 +75,8 @@ jobs:
           tflint --init
           tflint -f compact
 
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
       - name: Infracost Breakdown
         run: infracost breakdown --path .
