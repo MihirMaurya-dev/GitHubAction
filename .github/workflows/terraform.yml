@@ -11,6 +11,10 @@ jobs:
     name: 'Terraform CI & Security Scans'
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: env/dev
+
     env:
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
 
