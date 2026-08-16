@@ -1,0 +1,10 @@
+# Add 'terraform' label if any terraform files change
+terraform:
+  - changed-files:
+      - any-glob-to-any-file: '**/*.tf'
+      - any-glob-to-any-file: '**/*.tfvars'
+
+# Add 'github-actions' label if any workflows change
+github-actions:
+  - changed-files:
+      - any-glob-to-any-file: '.github/workflows/*'
