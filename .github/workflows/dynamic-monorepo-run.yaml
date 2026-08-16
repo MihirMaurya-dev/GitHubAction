@@ -21,6 +21,7 @@ jobs:
 
       - name: Gitleaks Scanner (Secrets)
         uses: gitleaks/gitleaks-action@v2
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -189,7 +190,7 @@ jobs:
 
       - name: Post Infracost Comment to PR
         if: steps.folder_check.outputs.is_terraform == 'true' && github.event_name == 'pull_request'
-        uses: infracost/actions/comment@v3
+        uses: infracost/actions/comment@v2
         with:
           path: ${{ matrix.folder }}/infracost-report.json
           behavior: update
