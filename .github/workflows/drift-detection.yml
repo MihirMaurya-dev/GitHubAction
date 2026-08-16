@@ -1,0 +1,32 @@
+name: Terraform Drift Detection
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # Runs every day at 8:00 AM UTC
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  drift-check:
+    name: Check for Drift
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: env/dev
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (Check for Drift)
+        # -detailed-exitcode returns 0 if no changes, and 2 if drift is detected!
+        # If drift is detected, this step will "fail" and GitHub will email you an alert.
+        run: terraform plan -detailed-exitcode

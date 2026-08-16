@@ -11,6 +11,10 @@ jobs:
     name: 'Terraform CI & Security Scans'
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: env/dev
+
     env:
       INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
 
@@ -71,5 +75,48 @@ jobs:
           tflint --init
           tflint -f compact
 
+      - name: Terraform Plan
+        run: terraform plan -out=tfplan
+
       - name: Infracost Breakdown
-        run: infracost breakdown --path .
+        if: github.event_name == 'pull_request'
+        run: infracost breakdown --path . --format=json --out-file=/tmp/infracost.json
+      
+      - name: Post Infracost Comment
+        if: github.event_name == 'pull_request'
+        run: |
+          infracost comment github --path /tmp/infracost.json \
+                                   --repo $GITHUB_REPOSITORY \
+                                   --pull-request ${{ github.event.pull_request.number }} \
+                                   --github-token ${{ secrets.GITHUB_TOKEN }} \
+                                   --behavior update
+
+      - name: Post Terraform Plan Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const { execSync } = require('child_process');
+            execSync('terraform show -no-color tfplan > plan.txt', { cwd: 'env/dev' });
+            const plan = fs.readFileSync('env/dev/plan.txt', 'utf8');
+            
+            const output = `#### 🏗️ Terraform Plan Details
+            <details><summary>Click to expand the plan output</summary>
+            
+            \`\`\`hcl
+            ${plan}
+            \`\`\`
+            </details>`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            })
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
