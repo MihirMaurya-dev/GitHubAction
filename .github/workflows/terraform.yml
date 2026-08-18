@@ -34,9 +34,9 @@ jobs:
         run: terraform fmt -check -recursive
 
       - name: Terraform Init
-        working-directory: Terraform\0206
+        working-directory: .\new
         run: terraform init
 
       - name: Terraform Validate
-        working-directory: Terraform\0206
+        working-directory: .\new
         run: terraform validate
