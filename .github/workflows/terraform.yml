@@ -1,0 +1,48 @@
+name: Terraform CI
+
+on:
+  push:
+    branches:
+      - main
+      - feature
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "3179c6eb-7031-4d3c-9bfb-8cdfb667ebd1",
+              "clientSecret": "mym8Q~4uBR.cj7zEZUEvFWnBDO1Kd-rJsutv6cZu",
+              "subscriptionId": "c4059466-3d82-4085-bc50-47a1cee82272",
+              "tenantId": "4c1e8b68-2db9-40b0-acc6-011d139af47d"
+            }
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: ./Env/dev
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./Env/dev
+        run: terraform validate
