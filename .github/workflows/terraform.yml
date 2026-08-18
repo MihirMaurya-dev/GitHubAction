@@ -1,11 +1,10 @@
 name: github bot
 
-
 on:
   push:
     branches:
       - main
-      - feature
+      - feature/bot
 
   pull_request:
     branches:
@@ -22,7 +21,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
