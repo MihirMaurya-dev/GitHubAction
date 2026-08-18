@@ -1,0 +1,44 @@
+name: github bot
+
+
+on:
+  push:
+    branches:
+      - main
+      - feature
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: Terraform\0206
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: Terraform\0206
+        run: terraform validate
