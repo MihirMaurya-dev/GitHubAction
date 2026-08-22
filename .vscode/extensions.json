@@ -1,0 +1,14 @@
+{
+    "recommendations": [
+        "hashicorp.terraform",
+        "github.vscode-github-actions",
+        "redhat.vscode-yaml",
+        "eamodio.gitlens",
+        "tamasfe.even-better-toml",
+        "ms-azuretools.vscode-docker",
+        "davidanson.vscode-markdownlint",
+        "esbenp.prettier-vscode",
+        "oderwat.indent-rainbow",
+        "aaron-bond.better-comments"
+    ]
+}

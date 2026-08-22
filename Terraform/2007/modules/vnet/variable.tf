@@ -1,2 +1,0 @@
-variable "vnets" {}
-variable "range" {}
