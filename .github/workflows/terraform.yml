@@ -1,31 +1,107 @@
 name: github bot
 
-
 on:
   push:
     branches:
       - main
       - feature
-
   pull_request:
     branches:
       - main
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
-  terraform:
-    name: Terraform Validation
+  # 1. Security scans run globally once per pipeline run
+  security-scans:
+    name: Security Scans
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks Secret Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: TruffleHog Secret Scanner
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: Trivy IaC Scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'config'
+          hide-progress: false
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+
+  # 2. Detect which directories have Terraform changes
+  detect-changes:
+    name: Detect Terraform Changes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get changed tf files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: '**/*.tf'
+          dir_names: true
+          json: true
+
+      - name: Set matrix output
+        id: set-matrix
+        run: |
+          echo "matrix=${{ steps.changed-files.outputs.all_changed_files }}" >> $GITHUB_OUTPUT
+
+  # 3. Run Terraform jobs dynamically for EACH changed directory
+  terraform:
+    name: Terraform Checks
+    needs: detect-changes
+    # Only run this job if there are actually changed directories
+    if: ${{ needs.detect-changes.outputs.matrix != '[]' && needs.detect-changes.outputs.matrix != '' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tf_dir: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+
+    env:
+      INFRACOST_API_KEY: ${{ secrets.INFRACOST_API_KEY }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: "latest"
+
+      - name: Setup Infracost
+        uses: infracost/actions/setup@v3
+        with:
+          api-key: ${{ secrets.INFRACOST_API_KEY }}
 
       - name: Azure Login
         uses: azure/login@v2
@@ -33,12 +109,65 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Terraform Format Check
-        run: terraform fmt -check -recursive
+        run: terraform fmt -check
+        working-directory: ${{ matrix.tf_dir }}
 
       - name: Terraform Init
-        working-directory: Terraform\0206
         run: terraform init
+        working-directory: ${{ matrix.tf_dir }}
 
       - name: Terraform Validate
-        working-directory: Terraform\0206
         run: terraform validate
+        working-directory: ${{ matrix.tf_dir }}
+
+      - name: Run TFLint
+        run: |
+          tflint --init
+          tflint -f compact
+        working-directory: ${{ matrix.tf_dir }}
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -no-color -out=tfplan
+          terraform show -no-color tfplan > tfplan.txt
+        working-directory: ${{ matrix.tf_dir }}
+
+      - name: Post Terraform Plan Comment
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        env:
+          PLAN_PATH: ${{ matrix.tf_dir }}/tfplan.txt
+          DIR: ${{ matrix.tf_dir }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync(process.env.PLAN_PATH, 'utf8');
+            const dir = process.env.DIR;
+            const maxLen = 65000;
+            const truncatedPlan = plan.length > maxLen ? plan.substring(0, maxLen) + '...' : plan;
+
+            const commentBody = `### 📝 Terraform Plan for \`${dir}\`\n<details>\n<summary>Click to expand</summary>\n\n\`\`\`hcl\n${truncatedPlan}\n\`\`\`\n</details>`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
+
+      - name: Generate Infracost JSON
+        run: infracost breakdown --path . --format json --out-file infracost.json
+        working-directory: ${{ matrix.tf_dir }}
+
+      - name: Post Infracost Comment
+        if: github.event_name == 'pull_request'
+        run: |
+          infracost comment github --repo $GITHUB_REPOSITORY \
+            --pull-request ${{ github.event.pull_request.number }} \
+            --path infracost.json \
+            --github-token ${{ secrets.GITHUB_TOKEN }} \
+            --behavior update \
+            --tag ${{ matrix.tf_dir }}
+        working-directory: ${{ matrix.tf_dir }}
